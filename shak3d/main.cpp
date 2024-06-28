@@ -23,13 +23,13 @@ int main(int argc, char *argv[]) {
     SDL_Event event{};
 	bool shouldDisplay = true;
 
-    Shakkar::inputs user;
+    Shakkar::inputs user_inputs;
     double alpha = 0.0;
     Uint64 last_time = SDL_GetPerformanceCounter();
 
     while (gameRunning) {
 
-        ProcessInputs(event, shouldDisplay, user, gameRunning);
+        ProcessInputs(event, shouldDisplay, user_inputs, gameRunning);
 
         if (shouldDisplay) { // skip frames that cant be shown due to window not currently accepting frames to display
 
@@ -38,12 +38,12 @@ int main(int argc, char *argv[]) {
             alpha += (double)((double)(now - last_time) / SDL_GetPerformanceFrequency() * UPDATES_PER_SECOND);
             last_time = now;
 
-            while (alpha > 1.0) {
-                if (!game.update(user)) {
+            while (alpha >= 1.0) {
+                if (!game.update(user_inputs)) {
                     gameRunning = false;
                     break;
                 }
-                user.update();
+                user_inputs.update();
 
                 alpha -= 1.0;
             }

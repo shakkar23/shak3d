@@ -10,28 +10,14 @@
 
 #include "SDL2_GL/shader_compiler.hpp"
 #include "Util/math.hpp"
+#include "Util/model_types.hpp"
+#include "Util/obj_loader.hpp"
 
 #include <vector>
 #include <array>
 #include <memory>
 
 
-struct VertexPN {
-	GLfloat pos[3];
-	GLfloat normal[3];
-};
-
-struct Model {
-	GLfloat color[3];
-	std::vector<VertexPN> vertices;
-	std::vector<GLushort> indices;
-};
-
-struct IndexedVBO {
-	std::unique_ptr<Model> group;
-	GLuint vertex_buffer_ID;
-	GLuint index_buffer_ID;
-};
 
 
 // cube
@@ -91,29 +77,26 @@ inline GLushort indices[] = {
 };
 
 
-inline std::array<Model, 1> vertexGroups = { {
-	{
-		.color = { 1.0f, 0.0f, 0.0f },
-		.vertices = std::vector<VertexPN>(vertices, vertices + sizeof(vertices) / sizeof(*vertices)),
-		.indices  = std::vector<GLushort>(indices, indices + sizeof(indices) / sizeof(*indices))
-	}
-} };
-
-
 class Game final {
+	float theta = 0.0f;
 	int x{}, y{};
+	int yaw{}, pitch{};
 	int texWidth, texHeight;
 	// GL resources
 
 	GLuint program_3d_id;
 
 	GLint loc_aPos;
+	GLint loc_uProjCameraToView;
+	GLint loc_uProjModelToWorld;
+	GLint loc_uProjWorldToCamera;
 
 	SDL_Texture* texTarget = nullptr, * bmpTex = nullptr;
 	SDL_Surface* bmpSurf = nullptr;
+	vec<3> camera_position{ 0,0,-1 };
 
 
-	std::vector<IndexedVBO> m_indexedVBOs;
+	std::vector<Model> models;
 
 
 
@@ -127,11 +110,14 @@ public:
 		loc_aPos = GL_NO_CHECK(GetAttribLocation(program_3d_id, "position"));
 		assert(loc_aPos >= 0);
 
+		std::vector<ModelData> vertexGroups;
+		// load horse.obj
+		vertexGroups.push_back(parse("assets/horse.obj"));
 
 		// Create VBOs and index buffers
 		for (auto& g : vertexGroups) {
-			IndexedVBO indexedVBO{};
-			indexedVBO.group = std::make_unique<Model>(g);
+			Model indexedVBO{};
+			indexedVBO.model = std::make_unique<ModelData>(g);
 
 			// Create vertex buffer
 			GL_CHECK(GenBuffers(1, &indexedVBO.vertex_buffer_ID));
@@ -143,15 +129,36 @@ public:
 			GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, indexedVBO.index_buffer_ID));
 			GL_CHECK(BufferData(GL_ARRAY_BUFFER, g.indices.size() * sizeof(GLushort), g.indices.data(), GL_STATIC_DRAW));
 
-			m_indexedVBOs.push_back(std::move(indexedVBO));
+			models.push_back(std::move(indexedVBO));
 		}
 
 
 		GL_CHECK(VertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0));
 		GL_CHECK(EnableVertexAttribArray(loc_aPos));
 
+
+		auto [w, h] = window.getWindowSize();
+
+
+		// Get uniform locations
+			loc_uProjCameraToView = GL_NO_CHECK(GetUniformLocation(program_3d_id, "uProjCameraToView"));
+
+			loc_uProjModelToWorld = GL_NO_CHECK(GetUniformLocation(program_3d_id, "uProjModelToWorld"));
+
+			loc_uProjWorldToCamera = GL_NO_CHECK(GetUniformLocation(program_3d_id, "uProjWorldToCamera"));
+
+		// Set projection matrix
+			auto proj = makeProjection(w, h, 90.0f, 0.01f, 100.0f);
+
+			GL_CHECK(UseProgram(program_3d_id));
+			GL_CHECK(UniformMatrix4fv(loc_uProjCameraToView, 1, GL_FALSE, (*proj.data.data()).data.data()));
+
+
+		// Create a texture
+		texTarget = SDL_CreateTexture(window.getRenderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+
 		// Load a texture
-		bmpSurf = IMG_Load("resources/texture.bmp");
+		bmpSurf = IMG_Load("assets/image.png");
 		if (bmpSurf == nullptr) {
 			std::cerr << "IMG_Load: " << IMG_GetError() << std::endl;
 			return;
@@ -162,9 +169,7 @@ public:
 			std::cerr << "SDL_CreateTextureFromSurface: " << SDL_GetError() << std::endl;
 			return;
 		}
-		auto [w, h] = window.getWindowSize();
-		// Create a texture to render to
-		texTarget = SDL_CreateTexture(window.getRenderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+
 
 		if (texTarget == nullptr) {
 			std::cerr << "SDL_CreateTexture: " << SDL_GetError() << std::endl;
@@ -180,7 +185,7 @@ public:
 		//GL_CHECK(DeleteProgram(programId));
 		GL_CHECK(DeleteProgram(program_3d_id));
 
-		for (auto& indexedVBO : m_indexedVBOs) {
+		for (auto& indexedVBO : models) {
 			GL_CHECK(DeleteBuffers(1, &indexedVBO.vertex_buffer_ID));
 			GL_CHECK(DeleteBuffers(1, &indexedVBO.index_buffer_ID));
 		}
@@ -200,5 +205,6 @@ public:
 
 private:
 	mat4x4 makeProjection(float width, float height, float fovY, float near, float far);
+
 };
 
