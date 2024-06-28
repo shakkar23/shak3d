@@ -20,22 +20,43 @@ bool Game::update(const Shakkar::inputs& state)
 
 	if(state.getKey(SDLK_w).held)
 	{
-		camera_position[2] += 0.1f;
+		// find the direction the camera is facing
+		auto to_rad = [](float deg) {return deg * 3.14159265358979323846f / 180.0f; };
+		vec<2> eulerAngles{ to_rad(yaw),to_rad(pitch) };
+		vec<4> target = { 0,0,1,1 };
+
+		mat4x4 camera_rot_x = mat4x4::rotate_x(eulerAngles[1]);
+		mat4x4 camera_rot_y = mat4x4::rotate_y(eulerAngles[0]);
+
+		target = camera_rot_x*camera_rot_y * target;
+
+		// move the camera in the direction it is facing
+		camera_position = camera_position + target.dehomogenize() * 0.1f;
 	}
 
 	if (state.getKey(SDLK_s).held)
 	{
-		camera_position[2] -= 0.1f;
+		// find the direction the camera is facing
+		auto to_rad = [](float deg) {return deg * 3.14159265358979323846f / 180.0f; };
+		vec<2> eulerAngles{ to_rad(yaw),to_rad(pitch) };
+		vec<4> target = { 0,0,1,1 };
+
+		mat4x4 camera_rot_x = mat4x4::rotate_x(eulerAngles[1]);
+		mat4x4 camera_rot_y = mat4x4::rotate_y(eulerAngles[0]);
+
+		target = camera_rot_x*camera_rot_y * target;
+
+		// move the camera in the direction it is facing
+		camera_position = camera_position - target.dehomogenize() * 0.1f;
 	}
-	
+
 	if (state.getKey(SDLK_d).held)
 	{
-		camera_position[0] -= 0.1f;
+
 	}
 
 	if (state.getKey(SDLK_a).held)
 	{
-		camera_position[0] += 0.1f;
 	}
 
 	if (state.getKey(SDLK_LEFT).held)
@@ -113,23 +134,21 @@ void Game::GameRender(Window& window)
 
 	// Set the matrix
 	{
-		auto to_rad = [](float deg) {return deg * 3.14159265358979323846f / 180.0f; };
-		mat4x4 matRotZ = mat4x4::rotate_z(0);
-		mat4x4 matRotX = mat4x4::rotate_x(0 * 0.5f);
+		auto to_rad = [](float deg) {return float(deg * M_PI  / 180.0f); };
+		mat4x4 matRotZ = mat4x4::rotate_z(theta);
+		mat4x4 matRotX = mat4x4::rotate_x(theta * 0.5f);
 		mat4x4 matTrans = mat4x4::identity();
 		matTrans[3][0] = camera_position[0];
 		matTrans[3][1] = camera_position[1];
 		matTrans[3][2] = camera_position[2];
 
-		vec<2> eulerAngles{ to_rad(yaw),to_rad(pitch) };
-		
 		// default direction the camera is facing with an extra 1 for matmuls
 		vec<4> target = { 0,0,1,1 };
 
-		mat4x4 camera_rot_x = mat4x4::rotate_x(eulerAngles[1]);
-		mat4x4 camera_rot_y = mat4x4::rotate_y(eulerAngles[0]);
+		mat4x4 camera_rot_x = mat4x4::rotate_x(to_rad(pitch));
+		mat4x4 camera_rot_y = mat4x4::rotate_y(to_rad(yaw));
 
-		target = camera_rot_x*camera_rot_y * target;
+		target = camera_rot_x * camera_rot_y * target;
 
 		// calulate the view matrix using the lookAt function (eulerToVec)
 		vec<3> lookAt = camera_position + target.dehomogenize();
@@ -140,7 +159,7 @@ void Game::GameRender(Window& window)
 			GL_CHECK(UniformMatrix4fv(loc_uProjWorldToCamera, 1, GL_FALSE, (*matView.data.data()).data.data()));
 
 		// combine all the matrices that we can
-		mat4x4 matWorld = matRotX * matRotZ * matTrans;
+		mat4x4 matWorld = matTrans * (matRotZ * matRotX);
 
 		if(loc_uProjModelToWorld >= 0)
 			GL_CHECK(UniformMatrix4fv(loc_uProjModelToWorld, 1, GL_FALSE, (*matWorld.data.data()).data.data()));
