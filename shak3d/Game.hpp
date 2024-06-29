@@ -19,69 +19,11 @@
 
 
 
-
-// cube
-inline VertexPN vertices[] = {
-	// front
-	{ { -0.5f, -0.5f,  0.5f },{ 0.0f, 0.0f, 1.0f } },
-	{ {  0.5f, -0.5f,  0.5f },{ 0.0f, 0.0f, 1.0f } },
-	{ {  0.5f,  0.5f,  0.5f },{ 0.0f, 0.0f, 1.0f } },
-	{ { -0.5f,  0.5f,  0.5f },{ 0.0f, 0.0f, 1.0f } },
-	// back
-	{ { -0.5f, -0.5f, -0.5f },{ 0.0f, 0.0f, -1.0f } },
-	{ {  0.5f, -0.5f, -0.5f },{ 0.0f, 0.0f, -1.0f } },
-	{ {  0.5f,  0.5f, -0.5f },{ 0.0f, 0.0f, -1.0f } },
-	{ { -0.5f,  0.5f, -0.5f },{ 0.0f, 0.0f, -1.0f } },
-	// top
-	{ { -0.5f,  0.5f,  0.5f },{ 0.0f, 1.0f, 0.0f } },
-	{ {  0.5f,  0.5f,  0.5f },{ 0.0f, 1.0f, 0.0f } },
-	{ {  0.5f,  0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f } },
-	{ { -0.5f,  0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f } },
-	// bottom
-	{ { -0.5f, -0.5f,  0.5f },{ 0.0f, -1.0f, 0.0f } },
-	{ {  0.5f, -0.5f,  0.5f },{ 0.0f, -1.0f, 0.0f } },
-	{ {  0.5f, -0.5f, -0.5f },{ 0.0f, -1.0f, 0.0f } },
-	{ { -0.5f, -0.5f, -0.5f },{ 0.0f, -1.0f, 0.0f } },
-	// right
-	{ {  0.5f, -0.5f,  0.5f },{ 1.0f, 0.0f, 0.0f } },
-	{ {  0.5f, -0.5f, -0.5f },{ 1.0f, 0.0f, 0.0f } },
-	{ {  0.5f,  0.5f, -0.5f },{ 1.0f, 0.0f, 0.0f } },
-	{ {  0.5f,  0.5f,  0.5f },{ 1.0f, 0.0f, 0.0f } },
-	// left
-	{ { -0.5f, -0.5f,  0.5f },{ -1.0f, 0.0f, 0.0f } },
-	{ { -0.5f, -0.5f, -0.5f },{ -1.0f, 0.0f, 0.0f } },
-	{ { -0.5f,  0.5f, -0.5f },{ -1.0f, 0.0f, 0.0f } },
-	{ { -0.5f,  0.5f,  0.5f },{ -1.0f, 0.0f, 0.0f } }
-};
-
-inline GLushort indices[] = {
-	// front
-	0, 1, 2,
-	2, 3, 0,
-	// back
-	4, 5, 6,
-	6, 7, 4,
-	// top
-	8, 9, 10,
-	10, 11, 8,
-	// bottom
-	12, 13, 14,
-	14, 15, 12,
-	// right
-	16, 17, 18,
-	18, 19, 16,
-	// left
-	20, 21, 22,
-	22, 23, 20
-
-};
-
-
 class Game final {
 	float theta = 0.0f;
 	int x{}, y{};
 	int yaw{}, pitch{};
-	int texWidth, texHeight;
+	int win_width, win_height;
 	// GL resources
 
 	GLuint program_3d_id;
@@ -90,10 +32,12 @@ class Game final {
 	GLint loc_uProjCameraToView;
 	GLint loc_uProjModelToWorld;
 	GLint loc_uProjWorldToCamera;
+	GLint loc_light_dir;
+	GLint loc_normal;
 
 	SDL_Texture* texTarget = nullptr, * bmpTex = nullptr;
 	SDL_Surface* bmpSurf = nullptr;
-	vec<3> camera_position{ 0,0,-1 };
+	glm::vec3 camera_position{ 0,0,-1 };
 
 
 	std::vector<Model> models;
@@ -112,14 +56,14 @@ public:
 
 		std::vector<ModelData> vertexGroups;
 		// load horse.obj
-		vertexGroups.push_back(parse("assets/horse.obj"));
+		vertexGroups.push_back(parse("assets/bnuy.obj"));
 
 		// Create VBOs and index buffers
 		for (auto& g : vertexGroups) {
 			Model indexedVBO{};
 			indexedVBO.model = std::make_unique<ModelData>(g);
 
-			// Create vertex buffer
+			// Create vertex normal buffer
 			GL_CHECK(GenBuffers(1, &indexedVBO.vertex_buffer_ID));
 			GL_CHECK(BindBuffer(GL_ARRAY_BUFFER, indexedVBO.vertex_buffer_ID));
 			GL_CHECK(BufferData(GL_ARRAY_BUFFER, g.vertices.size() * sizeof(VertexPN), g.vertices.data(), GL_STATIC_DRAW));
@@ -147,15 +91,27 @@ public:
 
 			loc_uProjWorldToCamera = GL_NO_CHECK(GetUniformLocation(program_3d_id, "uProjWorldToCamera"));
 
+			loc_light_dir = GL_NO_CHECK(GetUniformLocation(program_3d_id, "light_dir"));
+
+			loc_normal = GL_NO_CHECK(GetAttribLocation(program_3d_id, "normal"));
+
+
 		// Set projection matrix
-			auto proj = makeProjection(w, h, 90.0f, 0.01f, 100.0f);
+			auto proj = glm::perspective(90.0f, (float(w) / h) , 0.01f, 100.0f);
 
 			GL_CHECK(UseProgram(program_3d_id));
-			GL_CHECK(UniformMatrix4fv(loc_uProjCameraToView, 1, GL_FALSE, (*proj.data.data()).data.data()));
+
+			GL_CHECK(UniformMatrix4fv(loc_uProjCameraToView, 1, GL_FALSE, glm::value_ptr(proj)));
+
+
+		// Set light direction
+			glm::vec3 light_dir = glm::normalize(glm::vec3(0.0f, 1.0f, -1.0f));
+			GL_CHECK(Uniform3f(loc_light_dir, light_dir.x, light_dir.y, light_dir.z));
 
 
 		// Create a texture
 		texTarget = SDL_CreateTexture(window.getRenderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, h);
+
 
 		// Load a texture
 		bmpSurf = IMG_Load("assets/image.png");
@@ -164,6 +120,7 @@ public:
 			return;
 		}
 
+
 		bmpTex = SDL_CreateTextureFromSurface(window.getRenderer(), bmpSurf);
 		if (bmpTex == nullptr) {
 			std::cerr << "SDL_CreateTextureFromSurface: " << SDL_GetError() << std::endl;
@@ -171,12 +128,15 @@ public:
 		}
 
 
+
 		if (texTarget == nullptr) {
 			std::cerr << "SDL_CreateTexture: " << SDL_GetError() << std::endl;
 			return;
 		}
-		texWidth = w;
-		texHeight = h;
+
+
+		win_width = w;
+		win_height = h;
 
 	}
 
@@ -202,9 +162,5 @@ public:
 	bool update(const Shakkar::inputs& state);
 
 	void GameRender(Window& window);
-
-private:
-	mat4x4 makeProjection(float width, float height, float fovY, float near, float far);
-
 };
 

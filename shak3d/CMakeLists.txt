@@ -13,14 +13,14 @@ if(NOT WIN32)
 endif()
 find_package(SDL2_image REQUIRED)
 find_package(SDL2_ttf REQUIRED)
-
+find_package(glm CONFIG REQUIRED)
 
 
 include_directories(${SDL2_INCLUDE_DIRS} ${SDL2main_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR} ${CMAKE_BINARY_DIR})
 add_executable (shak3d      "main.cpp" "Game.cpp" "SDL2-Inputs/inputs.cpp"  "Util/math.hpp")
 
 
-target_link_libraries(shak3d PRIVATE SDL2_ttf::SDL2_ttf SDL2_image::SDL2_image ${SDL2_LIBRARIES}  ${OPENGL_LIBRARIES})
+target_link_libraries(shak3d PRIVATE SDL2_ttf::SDL2_ttf SDL2_image::SDL2_image ${SDL2_LIBRARIES}  ${OPENGL_LIBRARIES} glm::glm-header-only)
 # TODO: Add tests and install targets if needed.
 # Copy SDL2 DLLs to output folder on Windows
 if(WIN32)

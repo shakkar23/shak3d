@@ -1,4 +1,4 @@
 {
   "name": "3dshak",
-  "dependencies": [ "sdl2", "sdl2-image", "sdl2-ttf" ]
+  "dependencies": [ "sdl2", "sdl2-image", "sdl2-ttf", "glm" ]
 }

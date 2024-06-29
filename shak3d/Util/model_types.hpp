@@ -12,8 +12,8 @@
 
 
 struct VertexPN {
-	vec<3> pos;
-	vec<3> normal;
+	glm::vec3 pos;
+	glm::vec3 normal;
 };
 
 struct ModelData {

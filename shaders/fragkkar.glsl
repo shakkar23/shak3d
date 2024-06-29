@@ -2,7 +2,9 @@
 
 out vec4 color;
 
+varying in vec3 intensity;
+
 void main() {
-    color = vec4(1.0, 0.0, 0.5, 1.0);
+	color = vec4(intensity, 1.0);
 }
 
