@@ -120,8 +120,23 @@ bool Game::update(const Shakkar::inputs& state)
 
 void Game::GameRender(Window& window)
 {
+
+    // Clear viewport and set background color
 	window.setDrawColor(150, 150, 150, 255);
 	window.clear();
+	GL_CHECK(Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT));
+
+	// Disable alpha blend
+	GL_CHECK(Disable(GL_BLEND));
+
+	// Enable depth test
+	GL_CHECK(Enable(GL_DEPTH_TEST));
+	GL_CHECK(DepthMask(GL_TRUE));
+
+	// Enable face culling
+	GL_CHECK(Enable(GL_CULL_FACE));
+	GL_CHECK(CullFace(GL_BACK));
+	GL_CHECK(FrontFace(GL_CCW));
 
 	auto [win_x, win_y] = window.getWindowSize();
 
@@ -154,18 +169,18 @@ void Game::GameRender(Window& window)
 		matWorld = glm::rotate(matWorld, 0.f, glm::vec3(0, 0, 1));
 		matWorld = glm::rotate(matWorld, 0.f * 0.5f, glm::vec3(1, 0, 0));
 
-		// default direction the camera is facing with an extra 1 for matmuls
-		glm::vec4 target = { 0,0,1,1 };
+		// default direction the camera is facing with an extra 1 for matmuls or something
+		const glm::vec4 target = { 0,0,1,1 };
 
 		// given a yaw and a pitch in degrees assuming the default direction is 0,0,1, we can rotate the target vector
 		// to get the direction the camera is facing
 		glm::mat4x4 camera_rot_x = glm::rotate(glm::mat4x4(1.0f), glm::radians(float(pitch)), glm::vec3(1, 0, 0));
 		glm::mat4x4 camera_rot_y = glm::rotate(glm::mat4x4(1.0f), glm::radians(float(yaw)), glm::vec3(0, 1, 0));
 
-		target =  camera_rot_y * camera_rot_x * target;
+		glm::vec3 rotated_target = camera_rot_y * camera_rot_x * target;
 
 		// calulate the view matrix using the lookAt function (eulerToVec)
-		glm::vec3 lookAt = camera_position + glm::vec3(target);
+		glm::vec3 lookAt = camera_position + rotated_target;
 
 		glm::mat4x4 matView = glm::lookAt(camera_position, lookAt, glm::vec3(0, 1, 0));
 

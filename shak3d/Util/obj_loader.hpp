@@ -42,13 +42,13 @@ inline ModelData parse(std::string path) {
 	{
 		// generate normals
 		for (size_t i = 0; i < data.indices.size(); i += 3) {
-			glm::vec3 v0 = data.vertices[data.indices[i]].pos;
+			glm::vec3 v0 = data.vertices[data.indices[i + 0]].pos;
 			glm::vec3 v1 = data.vertices[data.indices[i + 1]].pos;
 			glm::vec3 v2 = data.vertices[data.indices[i + 2]].pos;
 
 			glm::vec3 normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
 
-			data.vertices[data.indices[i]].normal += normal;
+			data.vertices[data.indices[i + 0]].normal += normal;
 			data.vertices[data.indices[i + 1]].normal += normal;
 			data.vertices[data.indices[i + 2]].normal += normal;
 		}
@@ -60,7 +60,7 @@ inline ModelData parse(std::string path) {
 	else
 	{
 		for (size_t i = 0; i < data.indices.size(); i += 3) {
-			data.vertices[data.indices[i]].normal = normals[data.indices[i]];
+			data.vertices[data.indices[i + 0]].normal = normals[data.indices[i + 0]];
 			data.vertices[data.indices[i + 1]].normal = normals[data.indices[i + 1]];
 			data.vertices[data.indices[i + 2]].normal = normals[data.indices[i + 2]];
 		}

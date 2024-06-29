@@ -21,11 +21,15 @@
 
 class Game final {
 	float theta = 0.0f;
+	// player information
 	int x{}, y{};
 	int yaw{}, pitch{};
+	glm::vec3 camera_position{ 0,0,-1 };
+	
+	// window information
 	int win_width, win_height;
-	// GL resources
 
+	// GL resources
 	GLuint program_3d_id;
 
 	GLint loc_aPos;
@@ -34,14 +38,16 @@ class Game final {
 	GLint loc_uProjWorldToCamera;
 	GLint loc_light_dir;
 	GLint loc_normal;
-
+	
+	// SDL resources
 	SDL_Texture* texTarget = nullptr, * bmpTex = nullptr;
 	SDL_Surface* bmpSurf = nullptr;
-	glm::vec3 camera_position{ 0,0,-1 };
 
 
 	std::vector<Model> models;
 
+	// world information
+	glm::vec3 light_dir = glm::normalize(glm::vec3(0.0f, 1.0f, 0.0f));
 
 
 public:
@@ -56,7 +62,7 @@ public:
 
 		std::vector<ModelData> vertexGroups;
 		// load horse.obj
-		vertexGroups.push_back(parse("assets/bnuy.obj"));
+		vertexGroups.push_back(parse("assets/horse.obj"));
 
 		// Create VBOs and index buffers
 		for (auto& g : vertexGroups) {
@@ -105,7 +111,6 @@ public:
 
 
 		// Set light direction
-			glm::vec3 light_dir = glm::normalize(glm::vec3(0.0f, 1.0f, -1.0f));
 			GL_CHECK(Uniform3f(loc_light_dir, light_dir.x, light_dir.y, light_dir.z));
 
 
